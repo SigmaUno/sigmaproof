@@ -6,7 +6,7 @@ SigmaProof is an open evidence protocol and planned reference implementation for
 
 **Status:** experimental local proof tooling · **Concept:** v0.2 · **September 2026**
 
-The CLI can create explicitly unanchored private packages and verify local document integrity and batch membership. Durable ingestion, Paperless integration and authenticated Celestia proofs are not implemented yet. Specifications and binary profiles remain experimental drafts, not an interoperable protocol release.
+The CLI can create explicitly unanchored private packages and verify local document integrity and batch membership. An internal transactional store supports ingestion, frozen batches and pending submission records. HTTP ingestion, Paperless integration and authenticated Celestia proofs are not implemented yet. Specifications and binary profiles remain experimental drafts, not an interoperable protocol release.
 
 ## How it works
 
