@@ -1,0 +1,25 @@
+{
+  "status": "illustrative-not-executable",
+  "id": "standard-business-v1",
+  "version": 1,
+  "digests": {
+    "document": [
+      "sha256"
+    ]
+  },
+  "evidence": {
+    "event_chain": "required",
+    "metadata_commitment": "required"
+  },
+  "anchors": {
+    "minimum": 1,
+    "allowed": [
+      "celestia",
+      "bitcoin-opentimestamps"
+    ]
+  },
+  "timestamps": {
+    "required": false
+  },
+  "note": "Phase 2 design example; not a released schema, implementation capability, or regulatory profile."
+}

@@ -1,0 +1,17 @@
+name: Bug report
+description: Report a reproducible problem with synthetic inputs.
+labels: [bug]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Expected and observed behavior
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction and affected revision
+      description: Do not include private documents, nonces, or credentials.
+    validations:
+      required: true

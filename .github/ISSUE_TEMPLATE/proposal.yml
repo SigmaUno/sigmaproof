@@ -1,0 +1,16 @@
+name: Design or feature proposal
+description: Propose a protocol, product, or integration change.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem and proposed outcome
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria and trust implications
+    validations:
+      required: true
