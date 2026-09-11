@@ -23,7 +23,7 @@ comet-archive forking, integration and deployment are excluded from this first r
 | High | No parser, recovery, privacy, isolation or real-fixture tests | Implement acceptance tests in #5–#9 and review #15 |
 | High | Existing milestone dates unset; no artifact/install process | Date milestones; complete #16/#17 |
 
-The review covers the baseline repository and existing issues #2–#12. It is an architecture/readiness review, not a security audit of a working engine. The new skeleton supplies commands and operational probes only; it deliberately implements no draft cryptography or simulated anchor success.
+The review covers the baseline repository and existing issues #2–#12. It is an architecture/readiness review, not a security audit of a working engine. The merged foundation supplies experimental commitment, tree and manifest primitives. The next implementation adds unanchored package/local verification only; no real Celestia anchor success is claimed.
 
 ## Delivery schedule
 

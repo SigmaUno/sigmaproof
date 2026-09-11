@@ -1,5 +1,5 @@
-.PHONY: check docs-check test build fmt-check vectors-check
-check: docs-check fmt-check vectors-check test
+.PHONY: check docs-check test build fmt-check vectors-check verifier-boundary
+check: docs-check fmt-check vectors-check verifier-boundary test
 	go vet ./...
 
 docs-check:
@@ -20,3 +20,7 @@ vectors-check:
 	python3 scripts/generate_merkle_vectors.py --check
 	python3 scripts/generate_commitment_vectors.py --check
 	python3 scripts/generate_batch_vectors.py --check
+	python3 scripts/generate_package_vectors.py --check
+
+verifier-boundary:
+	python3 scripts/check_verifier_boundary.py

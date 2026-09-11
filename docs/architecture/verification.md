@@ -18,7 +18,7 @@ Each check reports `verified`, `failed`, `unavailable`, `unsupported`, or `not_a
 
 Report claimed source time, ingestion time, independently observed anchor time, and qualified timestamp time separately. Chain ordering does not establish exact wall-clock creation time. A valid signature establishes possession of a key; identity and authorization require additional trust evidence.
 
-The planned CLI is `sigmaproof verify document.pdf document.sigmaproof`. It will support an explicit offline mode, structured JSON results, caller-selected policy/trust configuration, resource limits, and non-success exit statuses for unmet requested verification. Exact flags and exit codes remain to be specified.
+The experimental CLI now supports `sigmaproof verify --offline --json document.pdf document.sigmaproof` for the unanchored profile. Exit 0 means requested local integrity checks passed; default verification requires anchor authentication and returns 3 while that remains unavailable. Invalid evidence/I/O errors return 1; usage errors return 2; unsupported package features return 3. Both modes perform no networking. See the [CLI contract](../../cmd/sigmaproof/README.md). Caller-selected trust/policy configuration and anchored profiles are not implemented; this local mode does not evaluate policies or establish external history.
 
 ## Completeness
 

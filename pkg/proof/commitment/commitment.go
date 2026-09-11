@@ -3,6 +3,7 @@
 package commitment
 
 import (
+	"bytes"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
@@ -137,4 +138,19 @@ func hashDocument(document io.Reader, maxBytes int64) (Digest, error) {
 	var result Digest
 	copy(result[:], h.Sum(nil))
 	return result, nil
+}
+
+// Parse decodes the exact experimental private preimage. No trailing data or
+// unsupported fields are accepted. Callers must keep these bytes private.
+func Parse(data []byte) (Witness, error) {
+	if len(data) != 90 || !bytes.Equal(data[:22], []byte(domain)) {
+		return Witness{}, errors.New("invalid commitment preimage framing")
+	}
+	w := Witness{Version: data[22], Algorithm: data[23], Representation: Representation(data[24]), Metadata: data[25]}
+	copy(w.DocumentDigest[:], data[26:58])
+	copy(w.Nonce[:], data[58:90])
+	if _, err := Encode(w); err != nil {
+		return Witness{}, err
+	}
+	return w, nil
 }
