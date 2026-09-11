@@ -157,3 +157,27 @@ func TestResourceLimitsAndErrors(t *testing.T) {
 		t.Fatal("lost read error")
 	}
 }
+
+func TestStrictPreimageDecode(t *testing.T) {
+	w, _, err := New(bytes.NewReader(nil), Original, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	encoded, _ := Encode(w)
+	parsed, err := Parse(encoded)
+	if err != nil || parsed != w {
+		t.Fatal("witness roundtrip failed")
+	}
+	for _, bad := range [][]byte{nil, encoded[:89], append(append([]byte{}, encoded...), 0)} {
+		if _, err := Parse(bad); err == nil {
+			t.Fatal("invalid framing accepted")
+		}
+	}
+	for _, offset := range []int{0, 21, 22, 23, 24, 25} {
+		bad := append([]byte{}, encoded...)
+		bad[offset] = 255
+		if _, err := Parse(bad); err == nil {
+			t.Fatal("invalid preimage accepted")
+		}
+	}
+}

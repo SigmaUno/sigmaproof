@@ -107,8 +107,9 @@ func (m Manifest) Digest() ([32]byte, error) {
 	return sha256.Sum256(data), nil
 }
 
-// Verify checks membership relative to this manifest. The caller must first
-// authenticate ALL encoded manifest bytes through independent anchor verification.
+// Verify checks membership relative to this manifest. To claim authenticated
+// publication, the caller must also authenticate ALL encoded manifest bytes
+// through independent anchor verification.
 func (m Manifest) Verify(c commitment.Digest, index uint64, path []merkle.Hash) error {
 	if err := m.validate(); err != nil {
 		return err

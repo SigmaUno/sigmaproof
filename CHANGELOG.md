@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add a bounded experimental unanchored package and CLI create/offline verification, with separate integrity/anchor results and private no-overwrite file output.
+
 - Add experimental public batch manifests with exact binary framing, strict decoding, bounded leaf counts and Python/Go fixtures.
 
 - Add the experimental fixed-width document commitment profile, streaming byte limits, private random nonces and reproducible Python/Go vectors.

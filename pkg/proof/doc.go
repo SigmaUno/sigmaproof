@@ -1,4 +1,4 @@
-// Package proof reserves the standalone document verification boundary.
-// Subpackages provide experimental commitment and Merkle primitives; no complete
-// package verifier is implemented. Keep this boundary independent of services.
+// Package proof implements experimental unanchored portable evidence and local
+// document integrity verification. It does not authenticate publication, time,
+// source provenance or policies. Serialized packages contain private material.
 package proof
