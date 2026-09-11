@@ -4,9 +4,9 @@
 
 SigmaProof is an open evidence protocol and planned reference implementation for independently verifying the integrity, existence, provenance assertions, and history of digital objects. Documents stay in their existing systems; customers retain portable evidence that can be verified without SigmaProof's servers.
 
-**Status:** architecture and project foundation · **Concept:** v0.2 · **September 2026**
+**Status:** buildable development skeleton · **Concept:** v0.2 · **September 2026**
 
-No evidence engine, verifier, integration, or anchor adapter is implemented yet. The specifications are drafts, not an interoperable protocol release. This repository establishes the product, architecture, engineering boundaries, and delivery backlog.
+No evidence engine, verifier, integration, or anchor adapter is implemented yet. The specifications are drafts, not an interoperable protocol release. This repository establishes the product, architecture, engineering boundaries, and delivery backlog. A Go command skeleton and experimental commitment/Merkle libraries are available; the CLI cannot yet create or verify portable evidence.
 
 ## How it works
 
@@ -55,15 +55,19 @@ Integrity does not establish that document contents are true, that an uploader w
 
 ## Working locally
 
-Only Python 3.9+ is needed for the documentation checks:
+Use Go 1.27.1 and Python 3.9+ for implementation and documentation checks:
 
 ```sh
 git clone https://github.com/SigmaUno/sigmaproof.git
 cd sigmaproof
-make check
+make check build
+./bin/sigmaproof version
+./bin/sigmaproofd -listen 127.0.0.1:8080
 ```
 
-The planned implementation language is Go. Package directories currently document responsibilities only. There is no daemon to start or production deployment to install.
+The daemon serves `/healthz` (200) and `/readyz` (503 until the engine exists). `sigmaproof verify` exits 3 without validating evidence. There is no ingestion endpoint or production deployment yet.
+
+Target: **October 8, 2026 testnet developer preview**, conditional on the [four-week release plan](docs/delivery/release-plan.md) and all MVP gates.
 
 ## Licensing
 
