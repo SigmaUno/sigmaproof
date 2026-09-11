@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add experimental public batch manifests with exact binary framing, strict decoding, bounded leaf counts and Python/Go fixtures.
+
 - Add the experimental fixed-width document commitment profile, streaming byte limits, private random nonces and reproducible Python/Go vectors.
 
 - Implement RFC 6962 Merkle roots, inclusion paths and bounded verification with Python/Go fixtures.

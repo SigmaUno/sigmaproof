@@ -19,3 +19,4 @@ build:
 vectors-check:
 	python3 scripts/generate_merkle_vectors.py --check
 	python3 scripts/generate_commitment_vectors.py --check
+	python3 scripts/generate_batch_vectors.py --check
