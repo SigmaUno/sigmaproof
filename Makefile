@@ -1,5 +1,5 @@
-.PHONY: check docs-check test build fmt-check
-check: docs-check fmt-check test
+.PHONY: check docs-check test build fmt-check vectors-check
+check: docs-check fmt-check vectors-check test
 	go vet ./...
 
 docs-check:
@@ -15,3 +15,7 @@ build:
 	mkdir -p bin
 	go build -trimpath -o bin/sigmaproof ./cmd/sigmaproof
 	go build -trimpath -o bin/sigmaproofd ./cmd/sigmaproofd
+
+vectors-check:
+	python3 scripts/generate_merkle_vectors.py --check
+	python3 scripts/generate_commitment_vectors.py --check

@@ -2,6 +2,7 @@
 """Reproduce RFC 6962 tree fixtures using an iterative Python implementation."""
 import hashlib
 import json
+import sys
 from pathlib import Path
 
 
@@ -34,4 +35,11 @@ for size in [0, 1, 2, 3, 5, 7, 8, 9, 16, 17]:
         root, path = tree(entries, index)
         vectors.append(dict(entries=[x.hex() for x in entries], index=index, root=root, path=path))
 target = Path(__file__).resolve().parents[1] / 'pkg/proof/merkle/testdata/rfc6962.json'
-target.write_text(json.dumps(vectors, indent=2) + '\n')
+output = json.dumps(vectors, indent=2) + '\n'
+if sys.argv[1:] == ['--check']:
+    if not target.exists() or target.read_text() != output:
+        raise SystemExit(f'Stale vectors: regenerate with {Path(__file__).name}')
+elif not sys.argv[1:]:
+    target.write_text(output)
+else:
+    raise SystemExit('Usage: ' + Path(__file__).name + ' [--check]')

@@ -6,7 +6,7 @@ SigmaProof is an open evidence protocol and planned reference implementation for
 
 **Status:** buildable development skeleton · **Concept:** v0.2 · **September 2026**
 
-No evidence engine, verifier, integration, or anchor adapter is implemented yet. The specifications are drafts, not an interoperable protocol release. This repository establishes the product, architecture, engineering boundaries, and delivery backlog. A Go command skeleton is available; it cannot create or verify evidence.
+No evidence engine, verifier, integration, or anchor adapter is implemented yet. The specifications are drafts, not an interoperable protocol release. This repository establishes the product, architecture, engineering boundaries, and delivery backlog. A Go command skeleton and experimental commitment/Merkle libraries are available; the CLI cannot yet create or verify portable evidence.
 
 ## How it works
 
