@@ -8,4 +8,14 @@ Repository setup includes issues, phase milestones, starter engineering tasks, P
 
 Use `main` as the default branch. Prefer squash merges and branch cleanup. Apply branch protection requiring documentation checks and resolved review conversations where the organization plan supports it. Record any unavailable controls rather than claiming they are enforced. Maintainer review remains required by contribution policy even when GitHub cannot enforce it.
 
+## Applied setup — 11 September 2026
+
+- Private repository, `main` default branch, issues enabled, wiki disabled.
+- Squash merging enabled; merge commits and rebase merging disabled; merged branches automatically deleted.
+- Five milestones and eleven engineering issues with labels and acceptance criteria.
+- Repository checks workflow runs successfully; CODEOWNERS names the initial administrator.
+- Branch protection is **not enforced**: GitHub returned HTTP 403 with a plan/visibility upgrade requirement.
+- Private vulnerability reporting is **not enabled**: GitHub returned HTTP 404 for the enablement endpoint on this repository. Use the private administrator-contact fallback in SECURITY.md.
+- License remains undecided. No release or working implementation is claimed.
+
 Before public launch: choose a license, confirm visibility, establish private reporting availability and named maintainer contacts, and review the repository for sensitive material. Before software release: add implementation CI, supported versions, signed release artifacts, dependency/security scanning appropriate to the actual code, and reproducible verification fixtures.

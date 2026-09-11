@@ -64,3 +64,7 @@ make check
 ```
 
 The planned implementation language is Go. Package directories currently document responsibilities only. There is no daemon to start or production deployment to install.
+
+## Licensing
+
+Licensing is [undecided](LICENSING.md), pending the project owner's selection before public launch.
