@@ -11,3 +11,5 @@ Read [the product brief](product/brief.md), [architecture](architecture/overview
 - Research: [primary sources](research/sources.md), [open questions](research/open-questions.md).
 
 All protocol and API documents are proposals unless explicitly marked accepted. A concept version is not a released wire-format version.
+
+Delivery: [four-week release plan and readiness review](delivery/release-plan.md).

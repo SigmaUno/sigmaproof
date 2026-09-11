@@ -1,6 +1,6 @@
 # Roadmap
 
-Milestones describe outcomes, not promised dates. No phase is implemented yet.
+M0 targets September 17, 2026; M1 targets October 8, 2026, subject to the gates and capacity in the [release plan](docs/delivery/release-plan.md). Later phases remain undated. A buildable skeleton exists; no evidence engine is implemented.
 
 | Milestone | Deliverable | Exit criterion |
 | --- | --- | --- |
@@ -27,3 +27,5 @@ Do not defer the historical-proof experiment until after building the service: i
 - M2: [lifecycle and multi-anchor](https://github.com/SigmaUno/sigmaproof/issues/10).
 - M3: [qualified services and renewal](https://github.com/SigmaUno/sigmaproof/issues/11).
 - M4: [enterprise integration](https://github.com/SigmaUno/sigmaproof/issues/12).
+
+comet-archive is excluded from M0/M1. [Post-release evaluation #18](https://github.com/SigmaUno/sigmaproof/issues/18) tracks optional archive/recovery infrastructure; portable verification must work with archive services disabled.

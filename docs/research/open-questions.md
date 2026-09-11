@@ -13,3 +13,5 @@ Resolve before protocol stabilization:
 9. What throughput, package-size, latency, and cost objectives follow from a representative workload?
 
 Each answer should become a reviewed SEP/ADR with acceptance tests, not an implicit implementation convention.
+
+Work in progress: [Celestia feasibility spike](celestia-spike.md).

@@ -1,3 +1,3 @@
 # Independent proof library
 
-Planned public Go package for defensive decoding and evidence verification. No API is implemented. It must work without daemon access or a SigmaProof database and have cross-implementation test vectors before stability is claimed.
+The [Merkle subpackage](merkle/README.md) implements and tests tree roots and inclusion paths. Full defensive envelope decoding, document verification and anchor authentication remain unimplemented. The library must work without daemon access or a SigmaProof database. Cross-language fixtures are available for the primitive; external review is still needed before interoperability is claimed.
