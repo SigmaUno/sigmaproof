@@ -39,4 +39,4 @@ Use a durable queue/outbox for committed ingestion, bounded retries with jitter,
 
 ## Implementation layout
 
-`cmd/` holds CLI and daemon skeleton entrypoints, `internal/` holds service implementation, including the [transactional storage library](../../internal/storage/README.md), `pkg/proof/` is the independently reusable experimental local verifier, `integrations/` holds adapters, and `spec/` defines language-independent behavior. The verifier must not import the daemon or require its database.
+`cmd/` holds the local CLI and development daemon entrypoints, `internal/` holds service implementation, including the [transactional storage library](../../internal/storage/README.md) and opt-in HTTP wrapper, `pkg/proof/` is the independently reusable experimental local verifier, `integrations/` holds adapters, and `spec/` defines language-independent behavior. The verifier must not import the daemon or require its database.

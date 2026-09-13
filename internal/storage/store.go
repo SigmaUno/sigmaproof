@@ -9,6 +9,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"time"
@@ -45,6 +47,15 @@ type IngestRequest struct {
 	Key     string
 	Source  Source
 	Witness commitment.Witness
+}
+
+type DocumentIngestRequest struct {
+	Tenant         string
+	Key            string
+	Source         Source
+	Representation commitment.Representation
+	Document       io.Reader
+	MaxBytes       int64
 }
 
 // Evidence and FrozenBatch are private storage records, not public anchor payloads.
@@ -254,6 +265,77 @@ func (s *Store) Ingest(req IngestRequest) (Evidence, bool, error) {
 	return result, created, nil
 }
 
+// IngestDocument hashes document bytes and creates a fresh witness only when no
+// matching idempotency/source record exists. Exact retries reuse the original
+// nonce and verify that the supplied document still matches it.
+func (s *Store) IngestDocument(req DocumentIngestRequest) (Evidence, bool, error) {
+	if !validText(req.Tenant) || !validText(req.Key) || !validSource(req.Source) || (req.Representation != commitment.Original && req.Representation != commitment.Derived) || req.Document == nil || req.MaxBytes < 0 || req.MaxBytes == math.MaxInt64 {
+		return Evidence{}, false, ErrInvalid
+	}
+	existing, found, err := s.find(req.Tenant, req.Key, req.Source, req.Representation)
+	if err != nil {
+		return Evidence{}, false, err
+	}
+	if found {
+		c, err := commitment.Compute(existing.Witness)
+		if err != nil {
+			return Evidence{}, false, ErrCorrupt
+		}
+		if err := commitment.Verify(req.Document, existing.Witness, c, req.MaxBytes); err != nil {
+			return Evidence{}, false, ErrConflict
+		}
+		return existing, false, nil
+	}
+	w, _, err := commitment.New(req.Document, req.Representation, req.MaxBytes)
+	if err != nil {
+		return Evidence{}, false, ErrInvalid
+	}
+	result, created, err := s.Ingest(IngestRequest{Tenant: req.Tenant, Key: req.Key, Source: req.Source, Witness: w})
+	if errors.Is(err, ErrConflict) {
+		existing, found, findErr := s.find(req.Tenant, req.Key, req.Source, req.Representation)
+		if findErr != nil {
+			return Evidence{}, false, findErr
+		}
+		if found && existing.Witness.DocumentDigest == w.DocumentDigest {
+			return existing, false, nil
+		}
+		return Evidence{}, false, ErrConflict
+	}
+	return result, created, err
+}
+
+func (s *Store) find(tenantID, key string, source Source, rep commitment.Representation) (Evidence, bool, error) {
+	var result Evidence
+	err := s.db.View(func(tx *bolt.Tx) error {
+		t, err := tenant(tx, tenantID, false)
+		if errors.Is(err, ErrNotFound) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		id := t.Bucket([]byte("keys")).Get([]byte(key))
+		if id == nil {
+			id = t.Bucket([]byte("sources")).Get(sourceKey(source, rep))
+		}
+		if id == nil {
+			return nil
+		}
+		result, err = evidence(t, string(id))
+		return err
+	})
+	if err != nil {
+		return Evidence{}, false, err
+	}
+	if result.ID == "" {
+		return Evidence{}, false, nil
+	}
+	if result.Source != source || result.Witness.Representation != rep {
+		return Evidence{}, false, ErrConflict
+	}
+	return result, true, nil
+}
+
 func ingest(tx *bolt.Tx, req IngestRequest) (Evidence, bool, error) {
 	t, err := tenant(tx, req.Tenant, true)
 	if err != nil {
@@ -321,6 +403,27 @@ func (s *Store) Evidence(tenantID, id string) (Evidence, error) {
 	if err != nil {
 		return Evidence{}, err
 	}
+	return result, nil
+}
+
+func (s *Store) Batch(tenantID, id string) (FrozenBatch, error) {
+	if !validText(tenantID) || !validID(id) {
+		return FrozenBatch{}, ErrInvalid
+	}
+	var result FrozenBatch
+	err := s.db.View(func(tx *bolt.Tx) error {
+		t, err := tenant(tx, tenantID, false)
+		if err != nil {
+			return err
+		}
+		result, err = frozen(t, id)
+		return err
+	})
+	if err != nil {
+		return FrozenBatch{}, err
+	}
+	result.Manifest = bytes.Clone(result.Manifest)
+	result.EvidenceIDs = append([]string(nil), result.EvidenceIDs...)
 	return result, nil
 }
 

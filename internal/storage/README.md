@@ -1,18 +1,20 @@
 # Private transactional storage
 
-Implements the local persistence slice of [#6](https://github.com/SigmaUno/sigmaproof/issues/6) using pinned bbolt v1.5.0. It is an internal library with no HTTP endpoints or daemon startup wiring yet. The offline proof library/CLI remain independent of storage.
+Implements the local persistence slice of [#6](https://github.com/SigmaUno/sigmaproof/issues/6) using pinned bbolt v1.5.0. It is an internal library used by the opt-in development daemon endpoints. The offline proof library/CLI remain independent of storage.
 
 ## Contract
 
 `Open(path)` uses a mode-0600 database, sync-enabled transactions and an exclusive process lock with a one-second acquisition timeout. New parent directories use mode 0700. Existing symlinks, nonregular or group/world-accessible database files are rejected. Choose a trusted local directory/filesystem; shared storage and multiple process writers are not supported. DB contents, backups and source indexes are private and unencrypted; customer storage access controls remain required.
 
 - `Ingest(request)` atomically writes evidence, tenant-scoped idempotency and source indexes, and a FIFO pending entry. The source tuple is instance, object, immutable version and representation. Tenant/key/source components must be valid nonempty UTF-8, at most 256 bytes each, without NUL. Identical retries preserve the ID, witness and sequence. Another key for an identical source/witness aliases the same record. Changed source or witness under an existing key conflicts; a new key cannot bypass a changed witness for the same source tuple. New source versions and representations need distinct idempotency keys.
+- `IngestDocument(request)` is the development HTTP wrapper: it hashes bounded document bytes, creates a private nonce only for the first accepted record, verifies exact retries against the stored witness, and reconciles concurrent identical uploads without exposing caller-supplied witnesses. Changed document bytes for an existing key/source conflict.
 - `Evidence(tenant, id)` returns a private record only inside that tenant. Unknown tenants and inaccessible records both return not found. There is no global ID lookup.
 - `Freeze(tenant, requestKey, limit)` atomically selects FIFO pending entries, creates the exact public manifest, assigns members their batch/index, removes those pending entries, and writes the batch request index and pending outbox entry. Limits are 1–1,024 per transaction (below the protocol's 65,536 cap). Retrying a successful freeze returns the same batch, including after restart or new ingestion. Changing its limit conflicts. Empty selections create no batch/request key.
+- `Batch(tenant, id)` returns a frozen batch only inside that tenant. Returned manifest and member slices are copies. There is no cross-tenant or global batch lookup.
 - `Outbox(tenant, limit)` reads pending manifest records in batch-ID order. Returned bytes are copies. The ID is opaque local bookkeeping; **only the 61 manifest bytes are the proposed anchor payload**. This does not claim/lease/submit/acknowledge work. Every entry is still pending.
 - `UnanchoredPackage(tenant, evidenceID)` reconstructs a local package from frozen records and verifies member indexes and the stored root before returning it. It cannot export pending/unbatched evidence or claim publication. Export must subsequently verify against original document bytes using the independent verifier.
 
-Tenant identity must eventually come from authenticated credentials, not a caller-controlled body field. This library provides namespace isolation, not authentication. There is no HTTP access until #6's authentication, request schema, error mapping, rate/body limits and resource policy are implemented.
+Tenant identity must eventually come from authenticated credentials, not a caller-controlled body field. This library provides namespace isolation, not authentication. The development HTTP access in `internal/server` is opt-in, local-first wiring with bounded requests and error mapping; authentication, rate limiting and production resource policy remain future work.
 
 ## Persistence and boundaries
 

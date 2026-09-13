@@ -1,0 +1,447 @@
+openapi: 3.1.0
+info:
+  title: SigmaProof Development API
+  version: 0.1.0-dev
+  description: >
+    Experimental local daemon API enabled only with `sigmaproofd -store PATH`.
+    Store-backed mode refuses non-loopback listen addresses. Tenant values are
+    caller-supplied for development; this is not the authenticated production
+    API and never claims provider submission, receipt capture or anchor
+    authentication.
+servers:
+  - url: http://127.0.0.1:8080
+paths:
+  /healthz:
+    get:
+      summary: Liveness check
+      responses:
+        "200":
+          description: Daemon process is alive.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+        "405":
+          $ref: "#/components/responses/MethodNotAllowed"
+  /readyz:
+    get:
+      summary: Readiness check
+      responses:
+        "200":
+          description: Store-backed development engine is enabled.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ready"
+        "503":
+          description: Engine is unavailable because no store was configured.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Unavailable"
+        "405":
+          $ref: "#/components/responses/MethodNotAllowed"
+  /v1/ingest:
+    post:
+      summary: Ingest bounded document bytes into the local development store
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IngestRequest"
+      responses:
+        "201":
+          description: New evidence record was created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IngestResponse"
+        "200":
+          description: Existing evidence record was returned for an idempotent retry.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IngestResponse"
+        "400":
+          $ref: "#/components/responses/InvalidRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "405":
+          $ref: "#/components/responses/MethodNotAllowed"
+  /v1/evidence/{id}:
+    get:
+      summary: Inspect redacted evidence state
+      parameters:
+        - $ref: "#/components/parameters/EvidenceID"
+        - $ref: "#/components/parameters/Tenant"
+      responses:
+        "200":
+          description: Evidence exists for the supplied tenant.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EvidenceStatus"
+        "400":
+          $ref: "#/components/responses/InvalidRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "405":
+          $ref: "#/components/responses/MethodNotAllowed"
+  /v1/evidence/{id}/package:
+    get:
+      summary: Export explicitly unanchored local package bytes
+      parameters:
+        - $ref: "#/components/parameters/EvidenceID"
+        - $ref: "#/components/parameters/Tenant"
+      responses:
+        "200":
+          description: Binary package using the unanchored development profile.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: Always `no-store`.
+          content:
+            application/vnd.sigmaproof:
+              schema:
+                type: string
+                format: binary
+        "400":
+          $ref: "#/components/responses/InvalidRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/NotBatched"
+        "405":
+          $ref: "#/components/responses/MethodNotAllowed"
+  /v1/batches/freeze:
+    post:
+      summary: Freeze FIFO pending evidence into a local manifest
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FreezeRequest"
+      responses:
+        "201":
+          description: Batch exists for the request key and remains pending submission.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BatchStatus"
+        "400":
+          $ref: "#/components/responses/InvalidRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "405":
+          $ref: "#/components/responses/MethodNotAllowed"
+  /v1/batches/{id}:
+    get:
+      summary: Inspect frozen batch membership and manifest
+      parameters:
+        - $ref: "#/components/parameters/BatchID"
+        - $ref: "#/components/parameters/Tenant"
+      responses:
+        "200":
+          description: Frozen batch exists for the supplied tenant.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BatchStatus"
+        "400":
+          $ref: "#/components/responses/InvalidRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "405":
+          $ref: "#/components/responses/MethodNotAllowed"
+  /v1/outbox:
+    get:
+      summary: List pending immutable manifest payloads
+      parameters:
+        - $ref: "#/components/parameters/Tenant"
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1024
+            default: 1024
+      responses:
+        "200":
+          description: Pending submissions in batch-ID order.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [submissions]
+                additionalProperties: false
+                properties:
+                  submissions:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Submission"
+              example:
+                submissions:
+                  - batch_id: 60f735f72de32cfd4b488e51d6dc107b
+                    manifest_hex: 7369676d6170726f6f663a6261746368000101010100000000000000019373f2ad6ccebcd5fcfb202b1c65b05fcc9042b7615fc7477c6a509111e184de
+                    state: pending_submission
+                    anchor_status: not_submitted
+        "400":
+          $ref: "#/components/responses/InvalidRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "405":
+          $ref: "#/components/responses/MethodNotAllowed"
+components:
+  parameters:
+    Tenant:
+      name: tenant
+      in: query
+      required: true
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 256
+    EvidenceID:
+      name: id
+      in: path
+      required: true
+      schema:
+        $ref: "#/components/schemas/LocalID"
+    BatchID:
+      name: id
+      in: path
+      required: true
+      schema:
+        $ref: "#/components/schemas/LocalID"
+  responses:
+    InvalidRequest:
+      description: Request violates JSON, field, text or numeric limits.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    UnsupportedMediaType:
+      description: POST body is not application/json.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    MethodNotAllowed:
+      description: HTTP method is not allowed for this endpoint.
+      headers:
+        Allow:
+          schema:
+            type: string
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Conflict:
+      description: Existing idempotency/source/batch state conflicts with the request.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: Tenant or record was not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotBatched:
+      description: Evidence has no frozen batch and cannot be exported.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+  schemas:
+    LocalID:
+      type: string
+      pattern: "^[0-9a-f]{32}$"
+    Health:
+      type: object
+      required: [status]
+      additionalProperties: false
+      properties:
+        status:
+          const: alive
+    Ready:
+      type: object
+      required: [status]
+      additionalProperties: false
+      properties:
+        status:
+          const: ready
+    Unavailable:
+      type: object
+      required: [status, reason]
+      additionalProperties: false
+      properties:
+        status:
+          const: unavailable
+        reason:
+          type: string
+    Error:
+      type: object
+      required: [error, message]
+      additionalProperties: false
+      properties:
+        error:
+          enum:
+            - unsupported_media_type
+            - method_not_allowed
+            - invalid_json
+            - invalid_request
+            - conflict
+            - not_found
+            - not_batched
+            - no_pending_evidence
+            - internal_error
+        message:
+          type: string
+    Source:
+      type: object
+      required: [instance, object, version]
+      additionalProperties: false
+      properties:
+        instance:
+          type: string
+          minLength: 1
+          maxLength: 256
+        object:
+          type: string
+          minLength: 1
+          maxLength: 256
+        version:
+          type: string
+          minLength: 1
+          maxLength: 256
+    IngestRequest:
+      type: object
+      required: [tenant, idempotency_key, source, representation, document_base64]
+      additionalProperties: false
+      properties:
+        tenant:
+          type: string
+          minLength: 1
+          maxLength: 256
+        idempotency_key:
+          type: string
+          minLength: 1
+          maxLength: 256
+        source:
+          $ref: "#/components/schemas/Source"
+        representation:
+          enum: [original, derived]
+        document_base64:
+          type: string
+          contentEncoding: base64
+          maxLength: 89478488
+          description: Strict standard-base64 encoding; decoded bytes must not exceed 64 MiB.
+    IngestResponse:
+      type: object
+      required: [evidence_id, created, sequence, batch_id]
+      additionalProperties: false
+      properties:
+        evidence_id:
+          $ref: "#/components/schemas/LocalID"
+        created:
+          type: boolean
+        sequence:
+          type: integer
+          minimum: 1
+        batch_id:
+          oneOf:
+            - $ref: "#/components/schemas/LocalID"
+            - type: "null"
+    EvidenceStatus:
+      type: object
+      required: [evidence_id, sequence, state, batch_id, batch_index, source, representation]
+      additionalProperties: false
+      properties:
+        evidence_id:
+          $ref: "#/components/schemas/LocalID"
+        sequence:
+          type: integer
+          minimum: 1
+        state:
+          enum: [pending_batch, pending_submission]
+        batch_id:
+          oneOf:
+            - $ref: "#/components/schemas/LocalID"
+            - type: "null"
+        batch_index:
+          oneOf:
+            - type: integer
+              minimum: 0
+            - type: "null"
+        source:
+          $ref: "#/components/schemas/Source"
+        representation:
+          enum: [original, derived, unsupported]
+    FreezeRequest:
+      type: object
+      required: [tenant, request_key, limit]
+      additionalProperties: false
+      properties:
+        tenant:
+          type: string
+          minLength: 1
+          maxLength: 256
+        request_key:
+          type: string
+          minLength: 1
+          maxLength: 256
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 1024
+    BatchStatus:
+      type: object
+      required: [batch_id, state, evidence_ids, member_count, limit, manifest_hex, anchor_status]
+      additionalProperties: false
+      properties:
+        batch_id:
+          $ref: "#/components/schemas/LocalID"
+        state:
+          const: pending_submission
+        evidence_ids:
+          type: array
+          items:
+            $ref: "#/components/schemas/LocalID"
+        member_count:
+          type: integer
+          minimum: 1
+          maximum: 1024
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 1024
+        manifest_hex:
+          type: string
+          pattern: "^[0-9a-f]{122}$"
+        anchor_status:
+          const: not_submitted
+    Submission:
+      type: object
+      required: [batch_id, manifest_hex, state, anchor_status]
+      additionalProperties: false
+      properties:
+        batch_id:
+          $ref: "#/components/schemas/LocalID"
+        manifest_hex:
+          type: string
+          pattern: "^[0-9a-f]{122}$"
+        state:
+          const: pending_submission
+        anchor_status:
+          const: not_submitted

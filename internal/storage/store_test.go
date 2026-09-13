@@ -159,6 +159,19 @@ func TestFreezeFIFOExportAndIsolation(t *testing.T) {
 	if _, err := s.Outbox("tenant-a", 10); err != nil {
 		t.Fatal("returned buffer aliases database")
 	}
+	storedBatch, err := s.Batch("tenant-a", b.ID)
+	if err != nil || !reflect.DeepEqual(storedBatch.EvidenceIDs, ids[:3]) {
+		t.Fatal("batch lookup failed")
+	}
+	storedBatch.Manifest[0] ^= 1
+	storedBatch.EvidenceIDs[0] = ids[3]
+	storedBatch, err = s.Batch("tenant-a", b.ID)
+	if err != nil || !reflect.DeepEqual(storedBatch.EvidenceIDs, ids[:3]) {
+		t.Fatal("returned batch aliases database")
+	}
+	if _, err := s.Batch("tenant-b", b.ID); !errors.Is(err, ErrNotFound) {
+		t.Fatal("cross-tenant batch access")
+	}
 	req, _ := request(0)
 	req.Tenant = "tenant-b"
 	foreign, created, err := s.Ingest(req)
@@ -217,6 +230,53 @@ func TestConcurrentWrites(t *testing.T) {
 	outbox, err := s.Outbox(req.Tenant, 10)
 	if err != nil || len(outbox) != 1 || len(batches) != 1 {
 		t.Fatal("concurrent freeze duplicated work")
+	}
+}
+
+func TestConcurrentDocumentIngestRetries(t *testing.T) {
+	s := openTest(t)
+	doc := []byte("document upload through HTTP wrapper")
+	req := DocumentIngestRequest{
+		Tenant:         "tenant-a",
+		Key:            "upload-key",
+		Source:         Source{"paperless", "object-1", "version-1"},
+		Representation: commitment.Original,
+		MaxBytes:       1024,
+	}
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	createdCount := 0
+	ids := map[string]bool{}
+	for i := 0; i < 16; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			next := req
+			next.Document = bytes.NewReader(doc)
+			e, created, err := s.IngestDocument(next)
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			mu.Lock()
+			defer mu.Unlock()
+			if created {
+				createdCount++
+			}
+			ids[e.ID] = true
+		}()
+	}
+	wg.Wait()
+	if createdCount != 1 || len(ids) != 1 {
+		t.Fatal("concurrent document ingestion duplicated evidence")
+	}
+	req.Document = bytes.NewReader([]byte("changed document"))
+	if _, _, err := s.IngestDocument(req); !errors.Is(err, ErrConflict) {
+		t.Fatal("changed document retry accepted")
+	}
+	req.Document = nil
+	if _, _, err := s.IngestDocument(req); !errors.Is(err, ErrInvalid) {
+		t.Fatal("nil document was not invalid")
 	}
 }
 
