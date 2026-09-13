@@ -1,0 +1,33 @@
+name: Preview release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-go@34829cb9acb0c3aab260216f67d0867cc080dca5
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Validate repository
+        run: make check
+      - name: Build preview archives
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          python3 scripts/build_release.py --version "$version" --dist-dir dist --clean --smoke-host
+          sha256sum --check dist/SHA256SUMS
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --title "SigmaProof $GITHUB_REF_NAME preview" \
+            --notes "Experimental developer preview. No production, regulatory certification or authenticated anchor claim is implied."
