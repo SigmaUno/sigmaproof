@@ -140,6 +140,9 @@ func TestFreezeFIFOExportAndIsolation(t *testing.T) {
 	if err != nil || len(outbox) != 2 {
 		t.Fatal("wrong pending outbox")
 	}
+	if outbox[0].State != SubmissionNotSubmitted {
+		t.Fatal("new outbox item is not marked not_submitted")
+	}
 	for _, item := range outbox {
 		if _, err := batch.Parse(item.Manifest); err != nil {
 			t.Fatal(err)
@@ -172,6 +175,29 @@ func TestFreezeFIFOExportAndIsolation(t *testing.T) {
 	if _, err := s.Batch("tenant-b", b.ID); !errors.Is(err, ErrNotFound) {
 		t.Fatal("cross-tenant batch access")
 	}
+	unknown, err := s.RecordSubmission("tenant-a", b.ID, SubmissionUnknown, "celestia:tx-unknown")
+	if err != nil || unknown.SubmissionState != SubmissionUnknown || unknown.SubmissionRef != "celestia:tx-unknown" {
+		t.Fatalf("unknown submission not recorded: %+v %v", unknown, err)
+	}
+	outbox, err = s.Outbox("tenant-a", 10)
+	if err != nil || len(outbox) != 2 {
+		t.Fatalf("unknown outcome was not retryable: %+v %v", outbox, err)
+	}
+	unknownWork, ok := submissionByBatch(outbox, b.ID)
+	if !ok || unknownWork.State != SubmissionUnknown || unknownWork.Ref != "celestia:tx-unknown" {
+		t.Fatalf("unknown outcome was not retained: %+v", outbox)
+	}
+	submitted, err := s.RecordSubmission("tenant-a", b.ID, SubmissionSubmitted, "celestia:height-1")
+	if err != nil || submitted.SubmissionState != SubmissionSubmitted {
+		t.Fatalf("submitted outcome not recorded: %+v %v", submitted, err)
+	}
+	outbox, err = s.Outbox("tenant-a", 10)
+	if err != nil || len(outbox) != 1 {
+		t.Fatalf("submitted batch remained pending: %+v %v", outbox, err)
+	}
+	if _, err := s.RecordSubmission("tenant-a", b.ID, SubmissionUnknown, "again"); !errors.Is(err, ErrConflict) {
+		t.Fatal("submitted batch regressed to unknown")
+	}
 	req, _ := request(0)
 	req.Tenant = "tenant-b"
 	foreign, created, err := s.Ingest(req)
@@ -181,6 +207,15 @@ func TestFreezeFIFOExportAndIsolation(t *testing.T) {
 	if _, err := s.Evidence("tenant-b", ids[0]); !errors.Is(err, ErrNotFound) {
 		t.Fatal("existing tenant accessed another tenant")
 	}
+}
+
+func submissionByBatch(items []Submission, batchID string) (Submission, bool) {
+	for _, item := range items {
+		if item.BatchID == batchID {
+			return item, true
+		}
+	}
+	return Submission{}, false
 }
 
 func TestConcurrentWrites(t *testing.T) {
@@ -331,6 +366,13 @@ func TestProcessRestart(t *testing.T) {
 		if _, err := s.Freeze(req.Tenant, "batch", 10); err != nil {
 			t.Fatal(err)
 		}
+		work, err := s.Outbox(req.Tenant, 10)
+		if err != nil || len(work) != 1 {
+			t.Fatal("missing child outbox")
+		}
+		if _, err := s.RecordSubmission(req.Tenant, work[0].BatchID, SubmissionUnknown, "ambiguous-child-submit"); err != nil {
+			t.Fatal(err)
+		}
 		os.Exit(0) // Intentionally skip Close and all defers after committed transactions.
 	}
 	path := filepath.Join(t.TempDir(), "restart.db")
@@ -354,7 +396,7 @@ func TestProcessRestart(t *testing.T) {
 		t.Fatal("freeze retry changed after restart")
 	}
 	work, err := s.Outbox(req.Tenant, 10)
-	if err != nil || len(work) != 1 || !bytes.Equal(work[0].Manifest, b.Manifest) {
+	if err != nil || len(work) != 1 || !bytes.Equal(work[0].Manifest, b.Manifest) || work[0].State != SubmissionUnknown || work[0].Ref != "ambiguous-child-submit" {
 		t.Fatal("pending submission lost after restart")
 	}
 	p, err := s.UnanchoredPackage(req.Tenant, e.ID)

@@ -184,12 +184,13 @@ func outbox(e engine) http.HandlerFunc {
 			ManifestHex  string `json:"manifest_hex"`
 			State        string `json:"state"`
 			AnchorStatus string `json:"anchor_status"`
+			Reference    any    `json:"reference"`
 		}
 		resp := struct {
 			Submissions []item `json:"submissions"`
 		}{Submissions: []item{}}
 		for _, s := range items {
-			resp.Submissions = append(resp.Submissions, item{s.BatchID, hex.EncodeToString(s.Manifest), "pending_submission", "not_submitted"})
+			resp.Submissions = append(resp.Submissions, item{s.BatchID, hex.EncodeToString(s.Manifest), batchState(s.State), anchorStatus(s.State), emptyNil(s.Ref)})
 		}
 		writeJSON(http.StatusOK, resp)(w, r)
 	}
@@ -343,11 +344,30 @@ func batchIndex(record storage.Evidence) any {
 func batchResponse(b storage.FrozenBatch) map[string]any {
 	return map[string]any{
 		"batch_id":      b.ID,
-		"state":         "pending_submission",
+		"state":         batchState(b.SubmissionState),
 		"evidence_ids":  b.EvidenceIDs,
 		"member_count":  len(b.EvidenceIDs),
 		"limit":         b.Limit,
 		"manifest_hex":  hex.EncodeToString(b.Manifest),
-		"anchor_status": "not_submitted",
+		"anchor_status": anchorStatus(b.SubmissionState),
+		"reference":     emptyNil(b.SubmissionRef),
+	}
+}
+
+func batchState(submissionState string) string {
+	if submissionState == storage.SubmissionSubmitted {
+		return "submitted"
+	}
+	return "pending_submission"
+}
+
+func anchorStatus(submissionState string) string {
+	switch submissionState {
+	case storage.SubmissionUnknown:
+		return "unknown"
+	case storage.SubmissionSubmitted:
+		return "submitted"
+	default:
+		return "not_submitted"
 	}
 }
