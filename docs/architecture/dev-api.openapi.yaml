@@ -194,6 +194,7 @@ paths:
                     manifest_hex: 7369676d6170726f6f663a6261746368000101010100000000000000019373f2ad6ccebcd5fcfb202b1c65b05fcc9042b7615fc7477c6a509111e184de
                     state: pending_submission
                     anchor_status: not_submitted
+                    reference: null
         "400":
           $ref: "#/components/responses/InvalidRequest"
         "404":
@@ -407,13 +408,13 @@ components:
           maximum: 1024
     BatchStatus:
       type: object
-      required: [batch_id, state, evidence_ids, member_count, limit, manifest_hex, anchor_status]
+      required: [batch_id, state, evidence_ids, member_count, limit, manifest_hex, anchor_status, reference]
       additionalProperties: false
       properties:
         batch_id:
           $ref: "#/components/schemas/LocalID"
         state:
-          const: pending_submission
+          enum: [pending_submission, submitted]
         evidence_ids:
           type: array
           items:
@@ -430,10 +431,16 @@ components:
           type: string
           pattern: "^[0-9a-f]{122}$"
         anchor_status:
-          const: not_submitted
+          enum: [not_submitted, unknown, submitted]
+        reference:
+          oneOf:
+            - type: string
+              minLength: 1
+              maxLength: 256
+            - type: "null"
     Submission:
       type: object
-      required: [batch_id, manifest_hex, state, anchor_status]
+      required: [batch_id, manifest_hex, state, anchor_status, reference]
       additionalProperties: false
       properties:
         batch_id:
@@ -444,4 +451,10 @@ components:
         state:
           const: pending_submission
         anchor_status:
-          const: not_submitted
+          enum: [not_submitted, unknown]
+        reference:
+          oneOf:
+            - type: string
+              minLength: 1
+              maxLength: 256
+            - type: "null"

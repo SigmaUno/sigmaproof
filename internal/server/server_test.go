@@ -121,6 +121,7 @@ func TestEngineHTTPIngestFreezeOutboxAndExport(t *testing.T) {
 		ManifestHex  string   `json:"manifest_hex"`
 		State        string   `json:"state"`
 		AnchorStatus string   `json:"anchor_status"`
+		Reference    *string  `json:"reference"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &frozen); err != nil {
 		t.Fatal(err)
@@ -129,7 +130,7 @@ func TestEngineHTTPIngestFreezeOutboxAndExport(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if frozen.BatchID == "" || frozen.State != "pending_submission" || frozen.AnchorStatus != "not_submitted" || frozen.MemberCount != 1 || frozen.Limit != 10 || len(frozen.EvidenceIDs) != 1 || frozen.EvidenceIDs[0] != ingested.EvidenceID {
+	if frozen.BatchID == "" || frozen.State != "pending_submission" || frozen.AnchorStatus != "not_submitted" || frozen.Reference != nil || frozen.MemberCount != 1 || frozen.Limit != 10 || len(frozen.EvidenceIDs) != 1 || frozen.EvidenceIDs[0] != ingested.EvidenceID {
 		t.Fatalf("bad freeze response: %+v", frozen)
 	}
 	if _, err := batch.Parse(manifest); err != nil {
@@ -147,11 +148,12 @@ func TestEngineHTTPIngestFreezeOutboxAndExport(t *testing.T) {
 		MemberCount  int      `json:"member_count"`
 		ManifestHex  string   `json:"manifest_hex"`
 		AnchorStatus string   `json:"anchor_status"`
+		Reference    *string  `json:"reference"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &batchStatus); err != nil {
 		t.Fatal(err)
 	}
-	if batchStatus.BatchID != frozen.BatchID || batchStatus.State != "pending_submission" || batchStatus.AnchorStatus != "not_submitted" || batchStatus.MemberCount != 1 || batchStatus.ManifestHex != frozen.ManifestHex || len(batchStatus.EvidenceIDs) != 1 || batchStatus.EvidenceIDs[0] != ingested.EvidenceID {
+	if batchStatus.BatchID != frozen.BatchID || batchStatus.State != "pending_submission" || batchStatus.AnchorStatus != "not_submitted" || batchStatus.Reference != nil || batchStatus.MemberCount != 1 || batchStatus.ManifestHex != frozen.ManifestHex || len(batchStatus.EvidenceIDs) != 1 || batchStatus.EvidenceIDs[0] != ingested.EvidenceID {
 		t.Fatalf("bad batch status: %+v", batchStatus)
 	}
 	assertNoPrivateMaterial(t, rec.Body.String(), doc)
@@ -177,16 +179,17 @@ func TestEngineHTTPIngestFreezeOutboxAndExport(t *testing.T) {
 	}
 	var outbox struct {
 		Submissions []struct {
-			BatchID      string `json:"batch_id"`
-			ManifestHex  string `json:"manifest_hex"`
-			State        string `json:"state"`
-			AnchorStatus string `json:"anchor_status"`
+			BatchID      string  `json:"batch_id"`
+			ManifestHex  string  `json:"manifest_hex"`
+			State        string  `json:"state"`
+			AnchorStatus string  `json:"anchor_status"`
+			Reference    *string `json:"reference"`
 		} `json:"submissions"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &outbox); err != nil {
 		t.Fatal(err)
 	}
-	if len(outbox.Submissions) != 1 || outbox.Submissions[0].BatchID != frozen.BatchID || outbox.Submissions[0].ManifestHex != frozen.ManifestHex || outbox.Submissions[0].AnchorStatus != "not_submitted" {
+	if len(outbox.Submissions) != 1 || outbox.Submissions[0].BatchID != frozen.BatchID || outbox.Submissions[0].ManifestHex != frozen.ManifestHex || outbox.Submissions[0].AnchorStatus != "not_submitted" || outbox.Submissions[0].Reference != nil {
 		t.Fatalf("bad outbox response: %+v", outbox)
 	}
 	assertNoPrivateMaterial(t, rec.Body.String(), doc)
