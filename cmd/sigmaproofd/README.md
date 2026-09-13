@@ -7,8 +7,8 @@ Without `-store`, the daemon exposes only `GET /healthz` and reports `GET /ready
 - `POST /v1/ingest` hashes a base64 document, creates a private nonce once, and stores tenant-scoped evidence idempotently.
 - `GET /v1/evidence/{id}?tenant=...` reports development state without witness bytes, document digest or nonce.
 - `POST /v1/batches/freeze` freezes FIFO pending evidence into an exact manifest and leaves it pending submission.
-- `GET /v1/batches/{id}?tenant=...` reports frozen batch membership and manifest bytes with `not_submitted` anchor status.
-- `GET /v1/outbox?tenant=...&limit=...` lists pending manifest bytes as hex; it does not claim submission or authentication.
+- `GET /v1/batches/{id}?tenant=...` reports frozen batch membership, manifest bytes and local submission status.
+- `GET /v1/outbox?tenant=...&limit=...` lists retryable pending manifest bytes as hex; `unknown` outcomes can stay pending for reconciliation. It does not claim authenticated publication.
 - `GET /v1/evidence/{id}/package?tenant=...` exports the explicitly unanchored local package for frozen evidence.
 
 HTTP timeouts and graceful SIGINT/SIGTERM shutdown are configured. Provider submission, receipt capture, authentication and production deployment remain future work. See the [architecture](../../docs/architecture/overview.md) and [development OpenAPI draft](../../docs/architecture/dev-api.openapi.yaml).

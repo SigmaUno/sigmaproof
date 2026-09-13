@@ -27,6 +27,12 @@ import (
 const MaxBatchEntries = 1024
 const maxRecordBytes = 128 << 10
 
+const (
+	SubmissionNotSubmitted = "not_submitted"
+	SubmissionUnknown      = "unknown"
+	SubmissionSubmitted    = "submitted"
+)
+
 var (
 	ErrConflict   = errors.New("idempotency or source-version conflict")
 	ErrNotFound   = errors.New("record not found")
@@ -69,17 +75,21 @@ type Evidence struct {
 }
 
 type FrozenBatch struct {
-	ID          string
-	Limit       int
-	EvidenceIDs []string
-	Manifest    []byte
+	ID              string
+	Limit           int
+	EvidenceIDs     []string
+	Manifest        []byte
+	SubmissionState string
+	SubmissionRef   string
 }
 
-// Submission exposes only the exact public manifest plus an opaque local batch ID.
-// Its presence means pending work, never submitted/captured/authenticated evidence.
+// Submission exposes only pending exact public manifests plus opaque local batch IDs.
+// Unknown outcomes stay pending; submitted batches leave the outbox.
 type Submission struct {
 	BatchID  string
 	Manifest []byte
+	State    string
+	Ref      string
 }
 
 // Open opens a mode-0600 database on a local filesystem with sync enabled and an
@@ -235,11 +245,23 @@ func frozen(t *bolt.Bucket, id string) (FrozenBatch, error) {
 	if err := decode(t.Bucket([]byte("batches")).Get([]byte(id)), &b); err != nil {
 		return FrozenBatch{}, err
 	}
+	if b.SubmissionState == "" {
+		b.SubmissionState = SubmissionNotSubmitted
+	}
 	m, err := batch.Parse(b.Manifest)
-	if err != nil || b.ID != id || !validID(id) || b.Limit < 1 || b.Limit > MaxBatchEntries || len(b.EvidenceIDs) > b.Limit || uint64(len(b.EvidenceIDs)) != m.Size {
+	if err != nil || b.ID != id || !validID(id) || b.Limit < 1 || b.Limit > MaxBatchEntries || len(b.EvidenceIDs) > b.Limit || uint64(len(b.EvidenceIDs)) != m.Size || !validSubmissionState(b.SubmissionState) || (b.SubmissionRef != "" && !validText(b.SubmissionRef)) {
 		return FrozenBatch{}, ErrCorrupt
 	}
 	return b, nil
+}
+
+func validSubmissionState(state string) bool {
+	switch state {
+	case SubmissionNotSubmitted, SubmissionUnknown, SubmissionSubmitted:
+		return true
+	default:
+		return false
+	}
 }
 
 // Ingest atomically persists the witness, idempotency/source indexes and pending
@@ -427,6 +449,45 @@ func (s *Store) Batch(tenantID, id string) (FrozenBatch, error) {
 	return result, nil
 }
 
+// RecordSubmission durably records local submission progress for a frozen batch.
+// Unknown outcomes remain in the outbox for reconciliation or retry. Submitted
+// batches are removed from pending work, but this is not proof authentication.
+func (s *Store) RecordSubmission(tenantID, batchID, state, reference string) (FrozenBatch, error) {
+	if !validText(tenantID) || !validID(batchID) || !validSubmissionState(state) || (reference != "" && !validText(reference)) {
+		return FrozenBatch{}, ErrInvalid
+	}
+	var result FrozenBatch
+	err := s.db.Update(func(tx *bolt.Tx) error {
+		t, err := tenant(tx, tenantID, false)
+		if err != nil {
+			return err
+		}
+		result, err = frozen(t, batchID)
+		if err != nil {
+			return err
+		}
+		if result.SubmissionState == SubmissionSubmitted && state != SubmissionSubmitted {
+			return ErrConflict
+		}
+		result.SubmissionState = state
+		result.SubmissionRef = reference
+		if err := put(t.Bucket([]byte("batches")), []byte(batchID), result); err != nil {
+			return err
+		}
+		outbox := t.Bucket([]byte("outbox"))
+		if state == SubmissionSubmitted {
+			return outbox.Delete([]byte(batchID))
+		}
+		return outbox.Put([]byte(batchID), result.Manifest)
+	})
+	if err != nil {
+		return FrozenBatch{}, err
+	}
+	result.Manifest = bytes.Clone(result.Manifest)
+	result.EvidenceIDs = append([]string(nil), result.EvidenceIDs...)
+	return result, nil
+}
+
 // Freeze atomically selects FIFO pending evidence, freezes exact manifest bytes,
 // binds each member and creates an outbox entry. A request key retries the same
 // batch even if new evidence arrived. Changed limits for the same key conflict.
@@ -496,7 +557,7 @@ func freeze(tx *bolt.Tx, tenantID, key string, limit int) (FrozenBatch, error) {
 	if err != nil {
 		return FrozenBatch{}, err
 	}
-	b := FrozenBatch{ID: id, Limit: limit, Manifest: manifest}
+	b := FrozenBatch{ID: id, Limit: limit, Manifest: manifest, SubmissionState: SubmissionNotSubmitted}
 	for i, e := range members {
 		e.BatchID, e.Index = id, uint64(i)
 		if err := put(t.Bucket([]byte("evidence")), []byte(e.ID), e); err != nil {
@@ -519,8 +580,8 @@ func freeze(tx *bolt.Tx, tenantID, key string, limit int) (FrozenBatch, error) {
 	return b, nil
 }
 
-// Outbox lists pending immutable manifests. It does not claim, submit or remove
-// work; ambiguous provider outcome reconciliation is deliberately not simulated.
+// Outbox lists pending immutable manifests. It does not claim or submit work.
+// Unknown submission outcomes remain visible until resolved or retried.
 func (s *Store) Outbox(tenantID string, limit int) ([]Submission, error) {
 	if !validText(tenantID) || limit < 1 || limit > MaxBatchEntries {
 		return nil, ErrInvalid
@@ -540,7 +601,7 @@ func (s *Store) Outbox(tenantID string, limit int) ([]Submission, error) {
 			if !bytes.Equal(payload, b.Manifest) {
 				return ErrCorrupt
 			}
-			result = append(result, Submission{BatchID: string(id), Manifest: bytes.Clone(payload)})
+			result = append(result, Submission{BatchID: string(id), Manifest: bytes.Clone(payload), State: b.SubmissionState, Ref: b.SubmissionRef})
 		}
 		return nil
 	})
