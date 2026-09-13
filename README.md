@@ -6,7 +6,7 @@ SigmaProof is an open evidence protocol and planned reference implementation for
 
 **Status:** experimental local proof tooling · **Concept:** v0.2 · **September 2026**
 
-The CLI can create explicitly unanchored private packages and verify local document integrity and batch membership. Durable ingestion, Paperless integration and authenticated Celestia proofs are not implemented yet. Specifications and binary profiles remain experimental drafts, not an interoperable protocol release.
+The CLI can create explicitly unanchored private packages and verify local document integrity and batch membership. An internal transactional store and opt-in development HTTP endpoints support ingestion, frozen batches and pending submission records. Paperless integration and authenticated Celestia proofs are not implemented yet. Specifications and binary profiles remain experimental drafts, not an interoperable protocol release.
 
 ## How it works
 
@@ -62,10 +62,10 @@ git clone https://github.com/SigmaUno/sigmaproof.git
 cd sigmaproof
 make check build
 ./bin/sigmaproof version
-./bin/sigmaproofd -listen 127.0.0.1:8080
+./bin/sigmaproofd -listen 127.0.0.1:8080 -store ./sigmaproof.db
 ```
 
-The daemon serves `/healthz` (200) and `/readyz` (503 until the engine exists). `sigmaproof verify --offline` checks local integrity; default verification exits 3 because anchor authentication is unavailable. See the [local CLI walkthrough](cmd/sigmaproof/README.md). There is no ingestion endpoint or production deployment yet.
+Without `-store`, the daemon serves `/healthz` (200) and `/readyz` (503). With a private local store it enables experimental ingestion, batching, pending outbox listing and unanchored package export endpoints, and refuses non-loopback listen addresses because there is no authentication. `sigmaproof verify --offline` checks local integrity; default verification exits 3 because anchor authentication is unavailable. See the [local CLI walkthrough](cmd/sigmaproof/README.md). There is no provider worker or production deployment yet.
 
 Target: **October 8, 2026 testnet developer preview**, conditional on the [four-week release plan](docs/delivery/release-plan.md) and all MVP gates.
 

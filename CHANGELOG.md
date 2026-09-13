@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Add opt-in development HTTP engine endpoints for ingestion, evidence/batch inspection, freezing, outbox listing and unanchored package export, with bounded request validation and an OpenAPI draft.
+
+- Add private bbolt storage for idempotent ingestion, atomic FIFO batch/outbox persistence and unanchored export reconstruction, with rollback/concurrency/process-exit recovery tests.
+
 - Add a bounded experimental unanchored package and CLI create/offline verification, with separate integrity/anchor results and private no-overwrite file output.
 
 - Add experimental public batch manifests with exact binary framing, strict decoding, bounded leaf counts and Python/Go fixtures.
