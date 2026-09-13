@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add a tag-scoped preview release workflow, cross-platform archive builder, checksums, smoke test and release runbook.
+
 - Add opt-in development HTTP engine endpoints for ingestion, evidence/batch inspection, freezing, outbox listing and unanchored package export, with bounded request validation and an OpenAPI draft.
 
 - Add private bbolt storage for idempotent ingestion, atomic FIFO batch/outbox persistence and unanchored export reconstruction, with rollback/concurrency/process-exit recovery tests.
