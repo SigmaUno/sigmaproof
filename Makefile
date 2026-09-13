@@ -1,5 +1,5 @@
-.PHONY: check docs-check test build fmt-check vectors-check verifier-boundary
-check: docs-check fmt-check vectors-check verifier-boundary test
+.PHONY: check docs-check test build fmt-check vectors-check verifier-boundary adversarial-check
+check: docs-check fmt-check vectors-check adversarial-check test
 	go vet ./...
 
 docs-check:
@@ -24,3 +24,6 @@ vectors-check:
 
 verifier-boundary:
 	python3 scripts/check_verifier_boundary.py
+
+adversarial-check:
+	python3 scripts/check_adversarial.py

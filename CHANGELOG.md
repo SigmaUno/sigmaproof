@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add an adversarial release-check target for bounded package fuzzing, parser limits, CLI symlink/no-partial-file behavior and offline verifier boundary checks.
+
 - Add a Paperless ingestion planner for explicit original/archive representation identity, stable idempotency keys and evidence write-back loop avoidance.
 
 - Add a tag-scoped preview release workflow, cross-platform archive builder, checksums, smoke test and release runbook.
