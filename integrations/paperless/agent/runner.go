@@ -87,6 +87,9 @@ func (r Runner) Handle(event Event) (Result, error) {
 	if fetched.Document == nil {
 		return Result{}, ErrMissingDocument
 	}
+	if closer, ok := fetched.Document.(io.Closer); ok {
+		defer closer.Close()
+	}
 	document, err := boundedBytes(fetched.Document, maxBytes)
 	if err != nil {
 		return Result{}, err
