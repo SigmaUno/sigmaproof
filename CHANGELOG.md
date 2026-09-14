@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add authenticated Paperless webhook handling with bounded JSON bodies and HMAC signatures over the exact request body.
+
 - Add a Paperless reconciliation loop that replays ready candidates through idempotent ingestion and reports per-item failures.
 
 - Add a minimal Paperless HTTP fetcher for token-authenticated original/archive document downloads through the versioned API.
