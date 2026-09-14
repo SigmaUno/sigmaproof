@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add a Paperless ingest runner that fetches selected representation bytes through a narrow interface, detects mutable fetches, bounds reads and submits idempotently to durable ingestion.
+
 - Add an adversarial release-check target for bounded package fuzzing, parser limits, CLI symlink/no-partial-file behavior and offline verifier boundary checks.
 
 - Add a Paperless ingestion planner for explicit original/archive representation identity, stable idempotency keys and evidence write-back loop avoidance.
