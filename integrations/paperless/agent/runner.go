@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 
 	"github.com/SigmaUno/sigmaproof/internal/storage"
 )
@@ -81,14 +82,14 @@ func (r Runner) Handle(event Event) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
+	if closer, ok := fetched.Document.(io.Closer); ok {
+		defer closer.Close()
+	}
 	if fetched.Version != "" && fetched.Version != event.Version {
 		return Result{}, ErrVersionChanged
 	}
 	if fetched.Document == nil {
 		return Result{}, ErrMissingDocument
-	}
-	if closer, ok := fetched.Document.(io.Closer); ok {
-		defer closer.Close()
 	}
 	document, err := boundedBytes(fetched.Document, maxBytes)
 	if err != nil {
@@ -109,6 +110,9 @@ func (r Runner) Handle(event Event) (Result, error) {
 }
 
 func boundedBytes(r io.Reader, maxBytes int64) ([]byte, error) {
+	if maxBytes <= 0 || maxBytes == math.MaxInt64 {
+		return nil, ErrNotConfigured
+	}
 	limited := io.LimitReader(r, maxBytes+1)
 	data, err := io.ReadAll(limited)
 	if err != nil {

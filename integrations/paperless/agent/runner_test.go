@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"io"
+	"math"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -149,5 +150,21 @@ func TestBoundedBytesAcceptsExactLimit(t *testing.T) {
 	}
 	if _, err := boundedBytes(io.MultiReader(strings.NewReader("12"), strings.NewReader("345")), 4); !errors.Is(err, ErrOversizedFetch) {
 		t.Fatalf("stream overflow not detected: %v", err)
+	}
+	for _, limit := range []int64{-1, 0, math.MaxInt64} {
+		if _, err := boundedBytes(strings.NewReader("data"), limit); !errors.Is(err, ErrNotConfigured) {
+			t.Fatalf("invalid limit %d accepted: %v", limit, err)
+		}
+	}
+}
+
+func TestRunnerClosesDocumentOnRejectedVersion(t *testing.T) {
+	body := &trackedBody{Reader: strings.NewReader("changed")}
+	runner := Runner{Fetcher: fetchFunc(func(FetchRequest) (FetchResult, error) {
+		return FetchResult{Version: "v2", Document: body}, nil
+	}), Ingester: openAgentStore(t)}
+	event := Event{Tenant: "tenant", Instance: "main", DocumentID: "42", Version: "v1", EventID: "1", Representation: OriginalUpload}
+	if _, err := runner.Handle(event); !errors.Is(err, ErrVersionChanged) || !body.closed || body.read != 0 {
+		t.Fatalf("mismatched document: err=%v closed=%v read=%d", err, body.closed, body.read)
 	}
 }
